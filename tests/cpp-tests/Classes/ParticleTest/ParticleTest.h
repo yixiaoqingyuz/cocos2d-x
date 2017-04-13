@@ -8,14 +8,14 @@ DEFINE_TEST_SUITE(ParticleTests);
 class ParticleDemo : public TestCase
 {
 protected:
-    cocos2d::ParticleSystemQuad*    _emitter;
-    cocos2d::Sprite*            _background;
-    cocos2d::LayerColor*		 _color;
+    cocos2d::ParticleSystemQuad* _emitter;
+    cocos2d::Sprite* _background;
+    cocos2d::LayerColor* _color;
 
 public:
-    ~ParticleDemo(void);
+    ~ParticleDemo();
 
-    virtual void onEnter(void);
+    virtual void onEnter()override;
 
     virtual std::string title() const override;
     virtual std::string subtitle() const override;
@@ -321,7 +321,7 @@ class PremultipliedAlphaTest : public ParticleDemo
 public:
     CREATE_FUNC(PremultipliedAlphaTest);
     virtual void onEnter() override;
-    void readdPaticle(float delta);
+    void readdParticle(float delta);
     virtual std::string title() const override;
     virtual std::string subtitle() const override;
 };
@@ -367,6 +367,32 @@ class ParticleResetTotalParticles : public ParticleDemo
 {
 public:
     CREATE_FUNC(ParticleResetTotalParticles);
+    virtual void onEnter() override;
+    virtual std::string title() const override;
+    virtual std::string subtitle() const override;
+};
+
+class ParticleIssue12310 : public ParticleDemo
+{
+public:
+    CREATE_FUNC(ParticleIssue12310);
+    virtual void onEnter() override;
+    virtual std::string subtitle() const override;
+};
+
+class DemoPause : public ParticleDemo
+{
+public:
+    CREATE_FUNC(DemoPause);
+    virtual void onEnter() override;
+    virtual std::string subtitle() const override;
+    void pauseEmitter(float time);
+};
+
+class ParticleSpriteFrame : public ParticleDemo
+{
+public:
+    CREATE_FUNC(ParticleSpriteFrame);
     virtual void onEnter() override;
     virtual std::string title() const override;
     virtual std::string subtitle() const override;

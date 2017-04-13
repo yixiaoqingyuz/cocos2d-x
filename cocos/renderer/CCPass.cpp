@@ -1,5 +1,5 @@
 /****************************************************************************
- Copyright (c) 2015 Chukong Technologies Inc.
+ Copyright (c) 2015-2017 Chukong Technologies Inc.
 
  http://www.cocos2d-x.org
 
@@ -27,7 +27,7 @@
  - Qt3D: http://qt-project.org/
  ****************************************************************************/
 
-#include "CCPass.h"
+#include "renderer/CCPass.h"
 #include "renderer/CCGLProgramState.h"
 #include "renderer/CCGLProgram.h"
 #include "renderer/CCTexture2D.h"
@@ -52,6 +52,7 @@ Pass* Pass::create(Technique* technique)
         pass->autorelease();
         return pass;
     }
+    CC_SAFE_DELETE(pass);
     return nullptr;
 }
 
@@ -63,6 +64,7 @@ Pass* Pass::createWithGLProgramState(Technique* technique, GLProgramState* progr
         pass->autorelease();
         return pass;
     }
+    CC_SAFE_DELETE(pass);
     return nullptr;
 }
 
@@ -129,7 +131,7 @@ uint32_t Pass::getHash() const
 {
     if (_hashDirty || _state->isDirty()) {
         uint32_t glProgram = (uint32_t)_glProgramState->getGLProgram()->getProgram();
-        uint32_t textureid = (uint32_t)_textures.at(0)->getName();
+        uint32_t textureid = _texture ? _texture->getName() : -1;
         uint32_t stateblockid = _state->getHash();
 
         _hash = glProgram ^ textureid ^ stateblockid;

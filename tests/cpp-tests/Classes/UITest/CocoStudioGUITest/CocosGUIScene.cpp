@@ -2,6 +2,7 @@
 
 #include "UIButtonTest/UIButtonTest.h"
 #include "UICheckBoxTest/UICheckBoxTest.h"
+#include "UIRadioButtonTest/UIRadioButtonTest.h"
 #include "UISliderTest/UISliderTest.h"
 #include "UIImageViewTest/UIImageViewTest.h"
 #include "UILoadingBarTest/UILoadingBarTest.h"
@@ -16,10 +17,10 @@
 #include "UIWidgetAddNodeTest/UIWidgetAddNodeTest.h"
 #include "UIRichTextTest/UIRichTextTest.h"
 #include "UIFocusTest/UIFocusTest.h"
-#if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID || CC_TARGET_PLATFORM == CC_PLATFORM_IOS)
+#include "UITabControlTest/UITabControlTest.h"
+
+#if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID || CC_TARGET_PLATFORM == CC_PLATFORM_IOS || CC_TARGET_PLATFORM == CC_PLATFORM_TIZEN) && !defined(CC_TARGET_OS_TVOS)
 #include "UIVideoPlayerTest/UIVideoPlayerTest.h"
-#endif
-#if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID || CC_TARGET_PLATFORM == CC_PLATFORM_IOS)
 #include "UIWebViewTest/UIWebViewTest.h"
 #endif
 #include "UIScale9SpriteTest.h"
@@ -29,10 +30,8 @@
 
 GUIDynamicCreateTests::GUIDynamicCreateTests()
 {
-#if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID || CC_TARGET_PLATFORM == CC_PLATFORM_IOS)
+#if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID || CC_TARGET_PLATFORM == CC_PLATFORM_IOS || CC_TARGET_PLATFORM == CC_PLATFORM_TIZEN) && !defined(CC_TARGET_OS_TVOS)
     addTest("VideoPlayer Test", [](){ return new (std::nothrow) VideoPlayerTests; });
-#endif
-#if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID || CC_TARGET_PLATFORM == CC_PLATFORM_IOS)
     addTest("WebView Test", [](){ return new (std::nothrow) WebViewTests; });
 #endif
 #if (CC_TARGET_PLATFORM == CC_PLATFORM_IOS) || (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID) || (CC_TARGET_PLATFORM == CC_PLATFORM_MAC) || (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32) || (CC_TARGET_PLATFORM == CC_PLATFORM_TIZEN) || (CC_TARGET_PLATFORM == CC_PLATFORM_WINRT)
@@ -42,6 +41,7 @@ GUIDynamicCreateTests::GUIDynamicCreateTests()
     addTest("Scale9Sprite Test", [](){ return new (std::nothrow) UIScale9SpriteTests; });
     addTest("Button Test", [](){ return new (std::nothrow) UIButtonTests; });
     addTest("CheckBox Test", [](){ return new (std::nothrow) UICheckBoxTests; });
+    addTest("RadioButton Test", [](){ return new (std::nothrow) UIRadioButtonTests; });
     addTest("Slider Test", [](){ return new (std::nothrow) UISliderTests; });
    
     addTest("ImageView Test", [](){ return new (std::nothrow) UIImageViewTests; });
@@ -59,4 +59,6 @@ GUIDynamicCreateTests::GUIDynamicCreateTests()
     
     addTest("WidgetAddNode Test", [](){ return new (std::nothrow) UIWidgetAddNodeTests; });
     addTest("RichText Test", [](){ return new (std::nothrow) UIRichTextTests; });
+
+    addTest("TabControl Test", [](){return new (std::nothrow) UITabControlTests; });
 }

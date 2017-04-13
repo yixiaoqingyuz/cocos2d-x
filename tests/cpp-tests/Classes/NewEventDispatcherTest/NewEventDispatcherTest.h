@@ -217,6 +217,30 @@ public:
     virtual std::string subtitle() const override;
 };
 
+class WindowEventsTest : public EventDispatcherTestDemo
+{
+public:
+    CREATE_FUNC(WindowEventsTest);
+    WindowEventsTest();
+
+    virtual std::string title() const override;
+    virtual std::string subtitle() const override;
+};
+
+class Issue8194 : public EventDispatcherTestDemo
+{
+public:
+    CREATE_FUNC(Issue8194);
+    Issue8194();
+    virtual ~Issue8194();
+    
+    virtual std::string title() const override;
+    virtual std::string subtitle() const override;
+    
+private:
+    cocos2d::EventListenerCustom* _listener;
+};
+
 class Issue9898 : public EventDispatcherTestDemo
 {
 public:

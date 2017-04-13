@@ -1,5 +1,5 @@
 /****************************************************************************
-Copyright 2014 Chukong Technologies Inc.
+Copyright (c) 2014-2017 Chukong Technologies Inc.
  
 http://www.cocos2d-x.org
  
@@ -33,7 +33,7 @@ THE SOFTWARE.
 #include "math/Vec4.h"
 
 /**
- * @addtogroup support
+ * @addtogroup renderer
  * @{
  */
 

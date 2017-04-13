@@ -16,6 +16,7 @@
 * See the License for the specific language governing permissions and limitations under the License.
 */
 
+#include "base/ccMacros.h"
 #include "platform/CCPlatformConfig.h"
 
 #if CC_TARGET_PLATFORM == CC_PLATFORM_WINRT
@@ -29,14 +30,16 @@
 #include <mfreadwrite.h>
 #include <queue>
 #include <mutex>
-#include "MediaStreamer.h"
+#include "audio/winrt/MediaStreamer.h"
+#include "ogg/ogg.h"
+#include "vorbis/vorbisfile.h"
 
 NS_CC_BEGIN
 namespace experimental{
 
-const UINT PCMDATA_CACHEMAXSIZE = 2621440;
-const UINT QUEUEBUFFER_NUM = 4;
-const UINT CHUNK_SIZE_MAX = PCMDATA_CACHEMAXSIZE / QUEUEBUFFER_NUM;
+const size_t PCMDATA_CACHEMAXSIZE = 2621440;
+const size_t QUEUEBUFFER_NUM = 4;
+const size_t CHUNK_SIZE_MAX = PCMDATA_CACHEMAXSIZE / QUEUEBUFFER_NUM;
 
 typedef std::vector<BYTE> PCMBuffer;
 
@@ -124,13 +127,29 @@ class MP3Reader : public AudioSourceReader
      HRESULT readAudioData(IMFSourceReader* pReader);
      void chunkify(PCMBuffer& buffer);
      bool appendToMappedWavFile(PCMBuffer& buffer);
-     void readFromMappedWavFile(BYTE *data, size_t offset, int size, UINT *pRetSize);
+     void readFromMappedWavFile(BYTE *data, size_t offset, size_t size, UINT *pRetSize);
      Microsoft::WRL::Wrappers::FileHandle openFile(const std::string& path, bool append = false);
 
  private:
      bool _largeFileSupport;
      std::string _mappedWavFile;
  };
+
+class OGGReader : public AudioSourceReader
+{
+public:
+    OGGReader();
+    virtual ~OGGReader();
+
+    virtual bool initialize(const std::string& filePath) override;
+    virtual FileFormat getFileFormat() override { return FileFormat::WAV; }
+    virtual bool consumeChunk(AudioDataChunk& chunk) override;
+    virtual void produceChunk() override;
+    virtual void seekTo(const float ratio) override;
+
+private:
+    std::unique_ptr<OggVorbis_File> _vorbisFd;
+};
 
 }
 NS_CC_END

@@ -1,7 +1,7 @@
 /****************************************************************************
  Copyright (c) 2008-2010 Ricardo Quesada
  Copyright (c) 2011-2012 cocos2d-x.org
- Copyright (c) 2013-2014 Chukong Technologies Inc.
+ Copyright (c) 2013-2017 Chukong Technologies Inc.
 
  http://www.cocos2d-x.org
 
@@ -28,7 +28,7 @@ var CocosBuilderTestScene = TestScene.extend({
      runThisTest:function(){
          if (cc.sys.isNative)
          {
-            cc.BuilderReader.setResourcePath("res/");
+            cc.BuilderReader.setResourcePath("res/resjs/");
          }
          else
          {
@@ -42,5 +42,9 @@ var CocosBuilderTestScene = TestScene.extend({
          }
 
          cc.director.runScene(this);
-     }
+     },
+    onMainMenuCallback: function(){
+        var scene = new ExtensionsTestScene();
+        scene.runThisTest();
+    }
 });

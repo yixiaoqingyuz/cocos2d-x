@@ -1,5 +1,5 @@
 /****************************************************************************
- Copyright (c) 2014 Chukong Technologies Inc.
+ Copyright (c) 2014-2017 Chukong Technologies Inc.
 
  http://www.cocos2d-x.org
 
@@ -43,8 +43,8 @@ FacebookTestScene = TestScene.extend({
 
         if(!cc.sys.isNative) {   //browser
             cc.loader.loadJs('', [
-                "../../../web/external/pluginx/platform/facebook_sdk.js",
-                "../../../web/external/pluginx/platform/facebook.js"
+                "../../web/external/pluginx/platform/facebook_sdk.js",
+                "../../web/external/pluginx/platform/facebook.js"
             ], function() {
                 var layer = nextFacebookTest();
                 self.addChild(layer);

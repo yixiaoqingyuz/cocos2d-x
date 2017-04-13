@@ -1,6 +1,6 @@
 /****************************************************************************
  Copyright (c) 2011-2012 cocos2d-x.org
- Copyright (c) 2013-2014 Chukong Technologies Inc.
+ Copyright (c) 2013-2017 Chukong Technologies Inc.
 
  http://www.cocos2d-x.org
 
@@ -23,7 +23,7 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-var UIWidgetAddNodeTest = UIScene.extend({
+var UIWidgetAddNodeTest = UIMainLayer.extend({
     init: function () {
         if (this._super()) {
             var widgetSize = this._widget.getContentSize();

@@ -1,7 +1,7 @@
 /****************************************************************************
  Copyright (c) 2008-2010 Ricardo Quesada
  Copyright (c) 2011-2012 cocos2d-x.org
- Copyright (c) 2013-2014 Chukong Technologies Inc.
+ Copyright (c) 2013-2017 Chukong Technologies Inc.
 
  http://www.cocos2d-x.org
 
@@ -49,6 +49,79 @@ var TextureCacheTestBase = BaseTestLayer.extend({
     }
 });
 
+var TextureLoadImgTest = TextureCacheTestBase.extend({
+    _title: "Load Same Image Twice",
+    _labelFirst:null,
+    _labelSecond:null,
+    ctor: function () {
+        this._super();
+
+        if('opengl' in cc.sys.capabilities && !cc.sys.isNative){
+            var label = new cc.LabelTTF("Not support Loading texture from remote site on HTML5-WebGL", "Times New Roman", 28);
+            label.x = winSize.width / 2;
+            label.y = winSize.height / 2;
+            this.addChild(label, 100);
+            return;
+        }
+
+        this._labelFirst = new cc.LabelTTF("load first image");
+        this._labelFirst.attr({
+            x:cc.winSize.width/2,
+            y:cc.winSize.height/2 + 30
+        });
+        this.addChild(this._labelFirst, 1);
+
+
+        this._labelSecond = new cc.LabelTTF("load second image");
+        this._labelSecond.attr({
+            x:cc.winSize.width/2,
+            y:cc.winSize.height/2 - 30
+        });
+        this.addChild(this._labelSecond, 1);
+
+        var url = "http://www.cocos2d-x.org/images/logo.png";
+        cc.textureCache.addImageAsync(url, this.texFirstLoaded, this);
+        cc.textureCache.addImageAsync(url, this.texSecondLoaded, this);
+    },
+
+    texFirstLoaded: function(texture) {
+        if (!texture)
+        {
+            this._labelFirst.setString("texFirstLoaded fail");
+            return;
+        }
+
+        if (this.sprite) {
+            this.removeChild(this.sprite);
+        }
+        this.sprite = new cc.Sprite(texture);
+        this.sprite.x = cc.winSize.width/2;
+        this.sprite.y = cc.winSize.height/2;
+        this.addChild(this.sprite);
+
+        this._labelFirst.setString("texFirstLoaded successful");
+    },
+
+    texSecondLoaded: function(texture) {
+
+        if (!texture)
+        {
+            this._labelSecond.setString("texSecondLoaded fail");
+            return;
+        }
+
+        if (this.sprite2) {
+            this.removeChild(this.sprite2);
+        }
+        this.sprite2 = new cc.Sprite(texture);
+        this.sprite2.x = cc.winSize.width/2;
+        this.sprite2.y = cc.winSize.height/2 + 70;
+        this.addChild(this.sprite2);
+
+        this._labelSecond.setString("texSecondLoaded successful");
+    }
+});
+
 var TextureCacheTest = TextureCacheTestBase.extend({
     _title:"Texture Cache Loading Test",
     _labelLoading:null,
@@ -73,7 +146,7 @@ var TextureCacheTest = TextureCacheTestBase.extend({
         this.addChild(this._labelPercent);
 
         var texCache = cc.textureCache;
-        // load textrues
+        // load textures
         texCache.addImageAsync("Images/HelloWorld.png", this.loadingCallBack, this);
         texCache.addImageAsync("Images/grossini.png", this.loadingCallBack, this);
         texCache.addImageAsync("Images/grossini_dance_01.png", this.loadingCallBack, this);
@@ -191,8 +264,7 @@ var TextureCacheTest = TextureCacheTestBase.extend({
 var RemoteTextureTest = TextureCacheTestBase.extend({
     _title:"Remote Texture Test",
     _subtitle:"",
-    _remoteTex: "http://cn.cocos2d-x.org/image/logo.png",
-    _sprite : null,
+    _remoteTex: "http://www.cocos2d-x.org/images/logo.png",
     onEnter:function () {
         this._super();
         if('opengl' in cc.sys.capabilities && !cc.sys.isNative){
@@ -205,23 +277,42 @@ var RemoteTextureTest = TextureCacheTestBase.extend({
     },
 
     startDownload: function() {
-        cc.textureCache.addImageAsync(this._remoteTex, this.texLoaded, this);
+        var imageUrlArray = ["http://www.cocos2d-x.org/s/upload/v35.jpg", "http://www.cocos2d-x.org/s/upload/testin.jpg", "http://www.cocos2d-x.org/s/upload/geometry_dash.jpg", "http://www.cocos2d-x.org/images/logo.png"];
+
+        for (var i = 0; i < imageUrlArray.length; i++) {
+            cc.textureCache.addImageAsync(imageUrlArray[i], this.texLoaded, this);
+        }
+
+        cc.loader.loadImg("http://www.cocos2d-x.org/no_such_file.jpg", this.failLoaded.bind(this));
     },
 
     texLoaded: function(texture) {
         if (texture instanceof cc.Texture2D) {
-            cc.log("Remote texture loaded: " + this._remoteTex);
-            if (this._sprite) {
-                this.removeChild(this._sprite);
-            }
-            this._sprite = new cc.Sprite(texture);
-            this._sprite.x = cc.winSize.width/2;
-            this._sprite.y = cc.winSize.height/2;
-            this.addChild(this._sprite);
+            cc.log("Remote texture loaded");
+            
+            var sprite = new cc.Sprite(texture);
+            sprite.x = cc.winSize.width/2;
+            sprite.y = cc.winSize.height/2;
+            this.addChild(sprite);
         }
         else {
             cc.log("Fail to load remote texture");
         }
+    },
+
+    failLoaded: function (err, img) {
+        var str = "";
+        if (err) {
+            str = "Correct behavior: failed to download from wrong url";
+        }
+        else {
+            str = "!!! Wrong behavior: succeed to download from wrong url";
+        }
+
+        var label = new cc.LabelTTF(str, "Times New Roman", 28);
+        label.x = winSize.width / 2;
+        label.y = winSize.height / 2;
+        this.addChild(label, 100);
     }
 });
 
@@ -243,6 +334,7 @@ var TexCacheTestScene = TestScene.extend({
 });
 
 var arrayOfTexCacheTest = [
+    TextureLoadImgTest,
     TextureCacheTest,
     RemoteTextureTest
 ];

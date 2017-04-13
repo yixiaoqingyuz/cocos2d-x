@@ -1,5 +1,5 @@
 /****************************************************************************
- Copyright (c) 2014 Chukong Technologies Inc.
+ Copyright (c) 2014-2017 Chukong Technologies Inc.
  
  http://www.cocos2d-x.org
  
@@ -20,8 +20,12 @@
  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
+
+ Code based GamePlay3D's Camera: http://gameplay3d.org
+
  ****************************************************************************/
 #include "2d/CCCamera.h"
+#include "2d/CCCameraBackgroundBrush.h"
 #include "base/CCDirector.h"
 #include "platform/CCGLView.h"
 #include "2d/CCScene.h"
@@ -29,24 +33,17 @@
 #include "renderer/CCQuadCommand.h"
 #include "renderer/CCGLProgramCache.h"
 #include "renderer/ccGLStateCache.h"
+#include "renderer/CCFrameBuffer.h"
+#include "renderer/CCRenderState.h"
 
 NS_CC_BEGIN
 
 Camera* Camera::_visitingCamera = nullptr;
+experimental::Viewport Camera::_defaultViewport;
 
+// start static methods
 
-Camera* Camera::getDefaultCamera()
-{
-    auto scene = Director::getInstance()->getRunningScene();
-    if(scene)
-    {
-        return scene->getDefaultCamera();
-    }
-
-    return nullptr;
-}
-
-    Camera* Camera::create()
+Camera* Camera::create()
 {
     Camera* camera = new (std::nothrow) Camera();
     camera->initDefault();
@@ -82,19 +79,51 @@ Camera* Camera::createOrthographic(float zoomX, float zoomY, float nearPlane, fl
     return nullptr;
 }
 
+Camera* Camera::getDefaultCamera()
+{
+    auto scene = Director::getInstance()->getRunningScene();
+    if(scene)
+    {
+        return scene->getDefaultCamera();
+    }
+
+    return nullptr;
+}
+
+const experimental::Viewport& Camera::getDefaultViewport()
+{
+    return _defaultViewport;
+}
+void Camera::setDefaultViewport(const experimental::Viewport& vp)
+{
+    _defaultViewport = vp;
+}
+
+const Camera* Camera::getVisitingCamera()
+{
+    return _visitingCamera;
+}
+
+// end static methods
+
 Camera::Camera()
 : _scene(nullptr)
 , _viewProjectionDirty(true)
 , _cameraFlag(1)
 , _frustumDirty(true)
+, _viewProjectionUpdated(false)
 , _depth(-1)
+, _fbo(nullptr)
 {
     _frustum.setClipZ(true);
+    _clearBrush = CameraBackgroundBrush::createDepthBrush(1.f);
+    _clearBrush->retain();
 }
 
 Camera::~Camera()
 {
-    
+    CC_SAFE_RELEASE_NULL(_fbo);
+    CC_SAFE_RELEASE(_clearBrush);
 }
 
 const Mat4& Camera::getProjectionMatrix() const
@@ -146,12 +175,8 @@ void Camera::lookAt(const Vec3& lookAtPos, const Vec3& up)
     
     Quaternion  quaternion;
     Quaternion::createFromRotationMatrix(rotation,&quaternion);
-
-    float rotx = atan2f(2 * (quaternion.w * quaternion.x + quaternion.y * quaternion.z), 1 - 2 * (quaternion.x * quaternion.x + quaternion.y * quaternion.y));
-    float roty = asin(clampf(2 * (quaternion.w * quaternion.y - quaternion.z * quaternion.x) , -1.0f , 1.0f));
-    float rotz = -atan2(2 * (quaternion.w * quaternion.z + quaternion.x * quaternion.y) , 1 - 2 * (quaternion.y * quaternion.y + quaternion.z * quaternion.z));
-    
-    setRotation3D(Vec3(CC_RADIANS_TO_DEGREES(rotx),CC_RADIANS_TO_DEGREES(roty),CC_RADIANS_TO_DEGREES(rotz)));
+    quaternion.normalize();
+    setRotationQuat(quaternion);
 }
 
 const Mat4& Camera::getViewProjectionMatrix() const
@@ -236,7 +261,7 @@ Vec2 Camera::project(const Vec3& src) const
     Vec4 clipPos;
     getViewProjectionMatrix().transformVector(Vec4(src.x, src.y, src.z, 1.0f), &clipPos);
     
-    CCASSERT(clipPos.w != 0.0f, "");
+    CCASSERT(clipPos.w != 0.0f, "clipPos.w can't be 0.0f!");
     float ndcX = clipPos.x / clipPos.w;
     float ndcY = clipPos.y / clipPos.w;
     
@@ -253,7 +278,7 @@ Vec2 Camera::projectGL(const Vec3& src) const
     Vec4 clipPos;
     getViewProjectionMatrix().transformVector(Vec4(src.x, src.y, src.z, 1.0f), &clipPos);
     
-    CCASSERT(clipPos.w != 0.0f, "");
+    CCASSERT(clipPos.w != 0.0f, "clipPos.w can't be 0.0f!");
     float ndcX = clipPos.x / clipPos.w;
     float ndcY = clipPos.y / clipPos.w;
     
@@ -334,7 +359,7 @@ float Camera::getDepthInView(const Mat4& transform) const
     return depth;
 }
 
-void Camera::setDepth(int depth)
+void Camera::setDepth(int8_t depth)
 {
     if (_depth != depth)
     {
@@ -396,76 +421,122 @@ void Camera::setScene(Scene* scene)
     }
 }
 
-void Camera::clearBackground(float depth)
+void Camera::clearBackground()
 {
-    GLboolean oldDepthTest;
-    GLint oldDepthFunc;
-    GLboolean oldDepthMask;
+    if (_clearBrush)
     {
-        glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-        glStencilMask(0);
-        oldDepthTest = glIsEnabled(GL_DEPTH_TEST);
-        glGetIntegerv(GL_DEPTH_FUNC, &oldDepthFunc);
-        glGetBooleanv(GL_DEPTH_WRITEMASK, &oldDepthMask);
-        glDepthMask(GL_TRUE);
-        glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_ALWAYS);
+        _clearBrush->drawBackground(this);
     }
-    
-    //draw
-    static V3F_C4B_T2F_Quad quad;
-    quad.bl.vertices = Vec3(-1,-1,0);
-    quad.br.vertices = Vec3(1,-1,0);
-    quad.tl.vertices = Vec3(-1,1,0);
-    quad.tr.vertices = Vec3(1,1,0);
-    
-    quad.bl.colors = quad.br.colors = quad.tl.colors = quad.tr.colors = Color4B(0,0,0,1);
-    
-    quad.bl.texCoords = Tex2F(0,0);
-    quad.br.texCoords = Tex2F(1,0);
-    quad.tl.texCoords = Tex2F(0,1);
-    quad.tr.texCoords = Tex2F(1,1);
-    
-    auto shader = GLProgramCache::getInstance()->getGLProgram(GLProgram::SHADER_CAMERA_CLEAR);
-    auto programState = GLProgramState::getOrCreateWithGLProgram(shader);
-    programState->setUniformFloat("depth", 1.0);
-    programState->apply(Mat4());
-    GLshort indices[6] = {0, 1, 2, 3, 2, 1};
-    
-    {
-        GL::bindVAO(0);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        
-        GL::enableVertexAttribs(GL::VERTEX_ATTRIB_FLAG_POS_COLOR_TEX);
-        
-        // vertices
-        glVertexAttribPointer(GLProgram::VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(V3F_C4B_T2F), &quad.tl.vertices);
-        
-        // colors
-        glVertexAttribPointer(GLProgram::VERTEX_ATTRIB_COLOR, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(V3F_C4B_T2F), &quad.tl.colors);
-        
-        // tex coords
-        glVertexAttribPointer(GLProgram::VERTEX_ATTRIB_TEX_COORD, 2, GL_FLOAT, GL_FALSE, sizeof(V3F_C4B_T2F), &quad.tl.texCoords);
-        
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices);
-    }
+}
 
-    
+void Camera::setFrameBufferObject(experimental::FrameBuffer *fbo)
+{
+    CC_SAFE_RETAIN(fbo);
+    CC_SAFE_RELEASE_NULL(_fbo);
+    _fbo = fbo;
+    if(_scene)
     {
-        if(GL_FALSE == oldDepthTest)
-        {
-            glDisable(GL_DEPTH_TEST);
-        }
-        glDepthFunc(oldDepthFunc);
-        if(GL_FALSE == oldDepthMask)
-        {
-            glDepthMask(GL_FALSE);
-        }
-        
-        glStencilMask(0xFFFFF);
-        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        _scene->setCameraOrderDirty();
     }
+}
+
+void Camera::apply()
+{
+    _viewProjectionUpdated = _transformUpdated;
+    applyFrameBufferObject();
+    applyViewport();
+}
+
+void Camera::applyFrameBufferObject()
+{
+    if(nullptr == _fbo)
+    {
+        // inherit from context if it doesn't have a FBO
+        // don't call apply the default one
+//        experimental::FrameBuffer::applyDefaultFBO();
+    }
+    else
+    {
+        _fbo->applyFBO();
+    }
+}
+
+void Camera::applyViewport()
+{
+    glGetIntegerv(GL_VIEWPORT, _oldViewport);
+
+    if(nullptr == _fbo)
+    {
+        glViewport(getDefaultViewport()._left, getDefaultViewport()._bottom, getDefaultViewport()._width, getDefaultViewport()._height);
+    }
+    else
+    {
+        glViewport(_viewport._left * _fbo->getWidth(), _viewport._bottom * _fbo->getHeight(),
+                   _viewport._width * _fbo->getWidth(), _viewport._height * _fbo->getHeight());
+    }
+}
+
+void Camera::setViewport(const experimental::Viewport& vp)
+{
+    _viewport = vp;
+}
+
+void Camera::restore()
+{
+    restoreFrameBufferObject();
+    restoreViewport();
+}
+
+void Camera::restoreFrameBufferObject()
+{
+    if(nullptr == _fbo)
+    {
+        // it was inherited from context if it doesn't have a FBO
+        // don't call restore the default one... just keep using the previous one
+//        experimental::FrameBuffer::applyDefaultFBO();
+    }
+    else
+    {
+        _fbo->restoreFBO();
+    }
+}
+
+void Camera::restoreViewport()
+{
+    glViewport(_oldViewport[0], _oldViewport[1], _oldViewport[2], _oldViewport[3]);
+}
+
+int Camera::getRenderOrder() const
+{
+    int result(0);
+    if(_fbo)
+    {
+        result = _fbo->getFID()<<8;
+    }
+    else
+    {
+        result = 127 <<8;
+    }
+    result += _depth;
+    return result;
+}
+
+void Camera::visit(Renderer* renderer, const Mat4 &parentTransform, uint32_t parentFlags)
+{
+    _viewProjectionUpdated = _transformUpdated;
+    return Node::visit(renderer, parentTransform, parentFlags);
+}
+
+void Camera::setBackgroundBrush(CameraBackgroundBrush* clearBrush)
+{
+    CC_SAFE_RETAIN(clearBrush);
+    CC_SAFE_RELEASE(_clearBrush);
+    _clearBrush = clearBrush;
+}
+
+bool Camera::isBrushValid()
+{
+    return _clearBrush != nullptr && _clearBrush->isValid();
 }
 
 NS_CC_END

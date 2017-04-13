@@ -1,5 +1,5 @@
 /****************************************************************************
-Copyright (c) 2013-2014 Chukong Technologies Inc.
+Copyright (c) 2013-2017 Chukong Technologies Inc.
 
 http://www.cocos2d-x.org
 
@@ -22,21 +22,25 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ****************************************************************************/
 
-#include "cocostudio/CCComAudio.h"
+#include "editor-support/cocostudio/CCComAudio.h"
 #include "audio/include/SimpleAudioEngine.h"
 #include "platform/CCFileUtils.h"
 
 namespace cocostudio {
 
 IMPLEMENT_CLASS_COMPONENT_INFO(ComAudio)
-ComAudio::ComAudio(void)
+
+const std::string ComAudio::COMPONENT_NAME = "CCComAudio";
+
+ComAudio::ComAudio()
 : _filePath("")
 , _loop(false)
+, _startedSoundId(0)
 {
-    _name = "CCComAudio";
+    _name = COMPONENT_NAME;
 }
 
-ComAudio::~ComAudio(void)
+ComAudio::~ComAudio()
 {
     
 }
@@ -56,16 +60,15 @@ void ComAudio::onExit()
     stopAllEffects();
 }
 
-bool ComAudio::isEnabled() const
+void ComAudio::onAdd()
 {
-    return _enabled;
 }
 
-void ComAudio::setEnabled(bool b)
+void ComAudio::onRemove()
 {
-    _enabled = b;
+    stopBackgroundMusic(true);
+    stopAllEffects();
 }
-
 
 bool ComAudio::serialize(void* r)
 {
@@ -132,7 +135,7 @@ bool ComAudio::serialize(void* r)
 			setLoop(loop);
 			playBackgroundMusic(filePath.c_str(), loop);
 		}
-		else if(strcmp(className, "CCComAudio") == 0)
+		else if(strcmp(className, COMPONENT_NAME.c_str()) == 0)
 		{
 			preloadEffect(filePath.c_str());
 		}
@@ -145,7 +148,7 @@ bool ComAudio::serialize(void* r)
 	return ret;
 }
 
-ComAudio* ComAudio::create(void)
+ComAudio* ComAudio::create()
 {
     ComAudio * pRet = new (std::nothrow) ComAudio();
     if (pRet && pRet->init())
@@ -319,4 +322,13 @@ bool ComAudio::isLoop()
 	return _loop;
 }
 
+void ComAudio::start()
+{
+    _startedSoundId = playEffect();
+}
+
+void ComAudio::stop()
+{
+    stopEffect(_startedSoundId);
+}
 }
